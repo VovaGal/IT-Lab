@@ -31,7 +31,7 @@ def login():
     cursor.execute("SELECT * FROM service.users WHERE login=%s AND password=%s", (str(username), str(password)))
     records = list(cursor.fetchall())
     if records:
-        return render_template('account.html', full_name=records[0][1])
+        return render_template('account.html', full_name=records[0][1], username = username, password = password)
     else:
         return render_template('no_user.html')
 
