@@ -1,0 +1,9 @@
+# get & start psql on windows subsytem
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo su postgres
+service postgresql start
+psql
+
+# create database
+
