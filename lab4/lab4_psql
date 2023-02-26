@@ -1,9 +1,34 @@
 # get & start psql on windows subsytem
+
 sudo apt update
 sudo apt install postgresql postgresql-contrib
 sudo su postgres
 service postgresql start
 psql
 
+
 # create database
 
+CREATE DATABASE service_db;
+\c service_db
+CREATE SCHEMA service;
+CREATE TABLE service.users (id SERIAL NOT NULL, full_name VARCHAR NOT NULL, login VARCHAR NOT NULL, password VARCHAR NOT NULL);
+
+
+# fill table
+
+INSERT INTO service.users (full_name, login, password) VALUES ('Galkin Vladimir','VGal', 'admin'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Bran Donald','Daran', 'CApermIs'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Blair Lancelot','Lizin', 'nairMA'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Fion Gareth','Galen', 'sLikEY'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Atticus Nuadu','Nauac', 'LDOnfL'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Gwythyr Wallace','Winde', 'EVoLit'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Aladdin Percival','Phere', 'NcHoUS'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Angus Ranald','Reedo', 'peReBe'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Grant Seumas','Salel', 'sEBuro'); 
+INSERT INTO service.users (full_name, login, password) VALUES ('Goku Parsifal','Pelic', 'IUMaND'); 
+
+
+# check table
+
+SELECT * FROM service.users;
