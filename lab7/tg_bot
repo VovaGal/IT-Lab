@@ -1,7 +1,8 @@
 import telebot
-import requests
 import psycopg2
+import datetime
 from telebot import types
+
 
 conn = psycopg2.connect(database="timestable_db",
                         user="postgres",
@@ -13,7 +14,11 @@ psql_select_timetable1 = "select day, string_agg(table_column, '\n') as table_ro
 psql_select_timetable2 = "select day, string_agg(table_column, '\n') as table_row from (select day, subject ||' | '|| room_numb ||' | '|| start_time ||'-'|| finish_time as table_column from timetable_week2)timetable_week2 group by 1 order by case when day = 'Monday' then 1 when day = 'Tuesday' then 2 when day = 'Wednesday' then 3 when day = 'Thursday' then 4 else 5 end;"
 
 
-this_week = "timetable_week1"
+num = int(date.isocalendar().week)
+if (num % 2) == 0:
+   this_week = "timetable_week2"
+else:
+   this_week = "timetable_week1"
 
 
 # store tgbot token
