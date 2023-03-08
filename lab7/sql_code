@@ -90,4 +90,4 @@ insert into teacher (full_name, subject) values ('Valkovsky Sergei Nikolayevich'
 insert into teacher (full_name, subject) values ('Sklyar Lilia Nikolayevna','history');
 insert into teacher (full_name, subject) values ('Izotova Anastasia Andreevna','basics of databases');
 insert into teacher (full_name, subject) values ('Potapchenko T D','project');
-
+insert into teacher (full_name, subject) values ('!','Dobby');
