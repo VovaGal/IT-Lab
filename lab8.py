@@ -358,7 +358,8 @@ class MainWindow(QWidget):
 #            updateButton = QPushButton("Update")
 #            deleteButton = QPushButton("Delete")
 #            addRow = QPushButton("Add Row")
-
+            selectRow = QPushButton("Select")
+            
             self.schedule_table.setItem(i, 0,
                                       QTableWidgetItem(str(r[0])))
             self.schedule_table.setItem(i, 1,
@@ -372,6 +373,7 @@ class MainWindow(QWidget):
             self.schedule_table.setItem(len(records), 2, QTableWidgetItem(str('')))
             self.schedule_table.setItem(len(records), 3, QTableWidgetItem(str('')))
 
+            self.schedule_table.setCellWidget(i, 4, selectRow)
 #            self.schedule_table.setCellWidget(i, 4, updateButton)
 
 #            updateButton.clicked.connect(lambda ch, num=i: self._update_lesson(num))
