@@ -21,6 +21,13 @@ if (num % 2) == 0:
 else:
    this_week = "timetable_week1"
 
+if this_week == "timetable_week2":
+    show_this_week = psql_select_timetable2
+    show_next_week = psql_select_timetable1
+else:
+    show_this_week = psql_select_timetable1
+    show_next_week = psql_select_timetable2
+
 # store tgbot token
 token = '6125194933:AAG-3e9VZQ59M5rNchFQ8ueAOOsVBjJ8Os4'
 bot = telebot.TeleBot(token)
@@ -68,7 +75,7 @@ def start_message(message):
 # decorator for this week
 @bot.message_handler(commands=['this_week'])
 def start_message(message):
-    cursor.execute(psql_select_timetable2)
+    cursor.execute(show_this_week)
     tb1_records = cursor.fetchall()
     for row in tb1_records:
         w1_display = '{}\n___________________\n{} \n___________________'.format(row[0], row[1])
@@ -78,7 +85,7 @@ def start_message(message):
 # decorator for next week
 @bot.message_handler(commands=['next_week'])
 def start_message(message):
-    cursor.execute(psql_select_timetable1)
+    cursor.execute(show_next_week)
     tb2_records = cursor.fetchall()
     for row in tb2_records:
         w2_display = '{}\n___________________\n{} \n___________________'.format(row[0], row[1])
