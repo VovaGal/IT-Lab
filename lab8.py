@@ -8,15 +8,12 @@ from PyQt5.QtWidgets import (QApplication, QWidget,
                              QTableWidget, QGroupBox,
                              QTableWidgetItem, QPushButton, QMessageBox, QInputDialog)
 
-
 today = date.today()
 num = int(today.isocalendar().week)
 if (num % 2) == 0:
-   this_week = "timetable_week2"
+    this_week = "timetable_week2"
 else:
-   this_week = "timetable_week1"
-
-
+    this_week = "timetable_week1"
 
 
 # main window created
@@ -38,6 +35,9 @@ class MainWindow(QWidget):
         self._create_timetable_week1_tab()
         self._create_timetable_week2_tab()
 
+        self.rowSelected = None
+        self.idSelected = None
+
     # connect to db
     def _connect_to_db(self):
         self.conn = psycopg2.connect(database="timestable_db",
@@ -47,6 +47,11 @@ class MainWindow(QWidget):
                                      port="5433")
 
         self.cursor = self.conn.cursor()
+
+
+
+
+
 
     # define teacher tab
     def _create_teacher_tab(self):
@@ -69,6 +74,24 @@ class MainWindow(QWidget):
         self.update_teacher_button = QPushButton("Update")
         self.shbox2.addWidget(self.update_teacher_button)
         self.update_teacher_button.clicked.connect(self._update_teacher)
+
+        self.shboxa = QHBoxLayout()
+        self.shbox1.addLayout(self.shboxa)
+        self.alter_teacher_button = QPushButton("Alter")
+        self.shboxa.addWidget(self.alter_teacher_button)
+        self.alter_teacher_button.clicked.connect(lambda ch: self.update_teacher_info('Alter'))
+
+        self.shboxd = QHBoxLayout()
+        self.shbox1.addLayout(self.shboxd)
+        self.delete_teacher_button = QPushButton("Delete")
+        self.shboxd.addWidget(self.delete_teacher_button)
+        self.delete_teacher_button.clicked.connect(lambda ch: self.update_teacher_info('Delete'))
+
+        self.shboxrow = QHBoxLayout()
+        self.shbox1.addLayout(self.shboxrow)
+        self.add_teacher_button = QPushButton("Add Row")
+        self.shboxrow.addWidget(self.add_teacher_button)
+        self.add_teacher_button.clicked.connect(lambda ch: self.update_teacher_info('Add Row'))
 
         self.teacher_tab.setLayout(self.svbox)
 
@@ -95,32 +118,105 @@ class MainWindow(QWidget):
 
         for i, r in enumerate(records):
             r = list(r)
-            updateButton = QPushButton("Update")
+            updateTeach = QPushButton("Select")
 
             self.teacher_table.setItem(i, 0,
                                        QTableWidgetItem(str(r[1])))
             self.teacher_table.setItem(i, 1,
                                        QTableWidgetItem(str(r[2])))
-            self.teacher_table.setCellWidget(i, 2, updateButton)
+            self.teacher_table.setItem(len(records), 0, QTableWidgetItem(str('')))
+            self.teacher_table.setItem(len(records), 1, QTableWidgetItem(str('')))
 
-            updateButton.clicked.connect(lambda ch, num=i: self._update_teacher_info())
+            self.teacher_table.setCellWidget(i, 2, updateTeach)
+            updateTeach.clicked.connect(lambda ch, num=i, id=r[0]: self.select_row(num, id))
+
+        selectTeach = QPushButton("Select")
+        self.teacher_table.setCellWidget(len(records),2, selectTeach)
+        selectTeach.clicked.connect(lambda ch, num=len(records): self.select_row(num))
 
         self.teacher_table.resizeRowsToContents()
 
-    # update teacher information
-    #    def _update_teacher_info(self, full_name, subject):
-    #        psql_teach = "update teacher set full_name = %s, subject = %s"
-    #
-    #        try:
-    #            self.cursor.execute(psql_teach, (full_name, subject))
-    #            self.updated_rows = self.cursor.rowcount
-    #            self.conn.commit()
-    #        except (Exception, psycopg2.DatabaseError) as error:
-    #            print(error)
-    #        self._update_teacher_info('Lapaev L L', 'english')
+    def update_teacher_info(self, query):
+        if query == 'Alter':
+            self.cursor.execute("select count(full_name) from teacher")
+            records = self.cursor.fetchall()
+            #print (self.rowSelected)
+            try:
+                if records[0][0] == self.rowSelected:
+                    raise Exception
+                elif records[0][0] > self.rowSelected:
+                    self.cursor.execute("SELECT column_name FROM information_schema.columns "
+                                        "WHERE table_schema = 'public' AND table_name = 'teacher' ")
+                    columns = self.cursor.fetchall()
+                    new_values = []
+                    for temp in columns[1:]:
+                        text, ok = QInputDialog.getText(self, 'Add new teacher', 'Enter {} value:'.format(temp[0]))
+                        if ok and text != "":
+                            new_values.append(text)
+                    if len(new_values) == 2:
+                        try:
+                            self.cursor.execute("update teacher "
+                                                "set full_name = %s, subject = %s "
+                                                "where id = {};".format(self.idSelected), tuple(new_values))
+                            self.conn.commit()
+                        except:
+                            self.conn.commit()
+                            QMessageBox.about(self, "Error", "Given subject value "
+                                                             "does not exist in subject table")
+
+            except:
+                self.conn.commit()
+                QMessageBox.about(self, "Error", "Select a non empty row first")
+
+        elif query == 'Delete':
+            self.cursor.execute("select count(full_name) from teacher")
+            records = self.cursor.fetchall()
+#            print (self.rowSelected)
+            try:
+                if records[0][0] == self.rowSelected:
+                    raise Exception
+                elif records[0][0] > self.rowSelected:
+                    print(self.rowSelected)
+                    self.cursor.execute("delete from teacher where id={}".format(self.idSelected))
+                    self.conn.commit()
+            except:
+                self.conn.commit()
+                QMessageBox.about(self, "Error", "Select a non empty row first")
+
+        elif query == 'Add Row':
+            self.cursor.execute("select count(full_name) from teacher")
+            records = self.cursor.fetchall()
+            if records[0][0] == self.rowSelected:
+                print('Can do')
+                self.cursor.execute("SELECT column_name FROM information_schema.columns "
+                                    "WHERE table_schema = 'public' AND table_name = 'teacher' ")
+                columns = self.cursor.fetchall()
+                new_values = []
+                for temp in columns[1:]:
+                    text, ok = QInputDialog.getText(self, 'Add new teacher', 'Enter {} value:'.format(temp[0]))
+                    if ok and text != "":
+                        new_values.append(text)
+                if len(new_values) == 2:
+                    try:
+                        self.cursor.execute("insert into "
+                                            "teacher (full_name, subject) "
+                                            "values (%s, %s);", tuple(new_values))
+                        self.conn.commit()
+                    except:
+                        self.conn.commit()
+                        QMessageBox.about(self, "Error", "Given subject value "
+                                                         "does not exist in subject table")
+
+                print(new_values)
+
+            else:
+                QMessageBox.about(self, "Error", "Select an empty row first")
 
     def _update_teacher(self):
+        self.rowSelected = None
+        self.idSelected = None
         self._update_teacher_table()
+
 
     # display timetable week1
     def _create_timetable_week1_tab(self):
@@ -151,7 +247,7 @@ class MainWindow(QWidget):
         self.timetable_week1_table = QTableWidget()
         self.timetable_week1_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
 
-        self.timetable_week1_table.setColumnCount(3)
+        self.timetable_week1_table.setColumnCount(2)
         self.timetable_week1_table.setHorizontalHeaderLabels(["Day", "Lessons", ""])
 
         self._update_timetable_week1_table()
@@ -166,26 +262,25 @@ class MainWindow(QWidget):
             "select day, string_agg(table_column, '\n\n') as table_row from (select day, timetable_week1.subject ||' | '|| room_numb ||' | '|| start_time ||'-'|| finish_time ||' | '|| full_name as table_column from timetable_week1, teacher where teacher.subject = timetable_week1.subject order by start_time)timetable_week1 group by 1 order by case when day = 'Monday' then 1 when day = 'Tuesday' then 2 when day = 'Wednesday' then 3 when day = 'Thursday' then 4 else 5 end;")
         records = list(self.cursor.fetchall())
 
-        self.timetable_week1_table.setRowCount(len(records) + 1)
+        self.timetable_week1_table.setRowCount(len(records))
 
         for i, r in enumerate(records):
             r = list(r)
-            updateButton = QPushButton("Update")
 
             self.timetable_week1_table.setItem(i, 0,
                                                QTableWidgetItem(str(r[0])))
             self.timetable_week1_table.setItem(i, 1,
                                                QTableWidgetItem(str(r[1])))
-            self.timetable_week1_table.setCellWidget(i, 2, updateButton)
-
-            updateButton.clicked.connect(lambda ch, num=i: self._update_timetable_week1_info())
 
         self.timetable_week1_table.resizeRowsToContents()
 
     def _update_timetable_week1(self):
+        self.rowSelected = None
+        self.idSelected = None
         self._update_timetable_week1_table()
 
-        # display timetable week2
+
+    # display timetable week2
     def _create_timetable_week2_tab(self):
         self.timetable_week2_tab = QWidget()
         self.tabs.addTab(self.timetable_week2_tab, "Week2")
@@ -214,7 +309,7 @@ class MainWindow(QWidget):
         self.timetable_week2_table = QTableWidget()
         self.timetable_week2_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
 
-        self.timetable_week2_table.setColumnCount(3)
+        self.timetable_week2_table.setColumnCount(2)
         self.timetable_week2_table.setHorizontalHeaderLabels(["Day", "Lessons", ""])
 
         self._update_timetable_week2_table()
@@ -229,25 +324,22 @@ class MainWindow(QWidget):
             "select day, string_agg(table_column, '\n\n') as table_row from (select day, timetable_week2.subject ||' | '|| room_numb ||' | '|| start_time ||'-'|| finish_time ||' | '|| full_name as table_column from timetable_week2, teacher where teacher.subject = timetable_week2.subject order by start_time)timetable_week2 group by 1 order by case when day = 'Monday' then 1 when day = 'Tuesday' then 2 when day = 'Wednesday' then 3 when day = 'Thursday' then 4 else 5 end;")
         records = list(self.cursor.fetchall())
 
-        self.timetable_week2_table.setRowCount(len(records) + 1)
+        self.timetable_week2_table.setRowCount(len(records))
 
         for i, r in enumerate(records):
             r = list(r)
-            updateButton = QPushButton("Update")
 
             self.timetable_week2_table.setItem(i, 0,
-                                                   QTableWidgetItem(str(r[0])))
+                                               QTableWidgetItem(str(r[0])))
             self.timetable_week2_table.setItem(i, 1,
-                                                   QTableWidgetItem(str(r[1])))
-            self.timetable_week2_table.setCellWidget(i, 2, updateButton)
-
-            updateButton.clicked.connect(lambda ch, num=i: self._update_timetable_week2_info())
+                                               QTableWidgetItem(str(r[1])))
 
         self.timetable_week2_table.resizeRowsToContents()
 
     def _update_timetable_week2(self):
+        self.rowSelected = None
+        self.idSelected = None
         self._update_timetable_week2_table()
-
 
 
     # display timetable tab by days
@@ -267,7 +359,6 @@ class MainWindow(QWidget):
         self.shbox1.addWidget(self.schedule_gbox)
 
         self._create_schedule_table()
-
 
         self.svbox.addLayout(self.shbox2)
         self.update_schedule_button = QPushButton("Update")
@@ -324,16 +415,13 @@ class MainWindow(QWidget):
 
         self.schedule_tab.setLayout(self.svbox)
 
-
-
-
     # display schedule for the day
     def _create_schedule_table(self):
         self.schedule_table = QTableWidget()
         self.schedule_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
 
         self.schedule_table.setColumnCount(5)
-        self.schedule_table.setHorizontalHeaderLabels(["Subject", "Room numb", "Start time", "Finish time", "",""])
+        self.schedule_table.setHorizontalHeaderLabels(["Subject", "Room numb", "Start time", "Finish time", "", ""])
 
         self._update_schedule_table()
 
@@ -341,87 +429,133 @@ class MainWindow(QWidget):
         self.mvbox.addWidget(self.schedule_table)
         self.schedule_gbox.setLayout(self.mvbox)
 
-
     def btnstate(self, wday):
         self.day = wday
 
-
     def _update_schedule_table(self):
         self.cursor.execute(
-            "SELECT subject, room_numb, start_time, finish_time FROM {} WHERE day = '{}'".format(this_week, self.day))
+            "SELECT subject, room_numb, start_time, finish_time, id FROM {} WHERE day = '{}'".format(this_week, self.day))
         records = list(self.cursor.fetchall())
 
         self.schedule_table.setRowCount(len(records) + 1)
         self.schedule_gbox.setTitle(self.day)
         for i, r in enumerate(records):
             r = list(r)
-#            updateButton = QPushButton("Update")
-#            deleteButton = QPushButton("Delete")
-#            addRow = QPushButton("Add Row")
+            #            updateButton = QPushButton("Update")
+            #            deleteButton = QPushButton("Delete")
+            #            addRow = QPushButton("Add Row")
             selectRow = QPushButton("Select")
-            
+
             self.schedule_table.setItem(i, 0,
-                                      QTableWidgetItem(str(r[0])))
+                                        QTableWidgetItem(str(r[0])))
             self.schedule_table.setItem(i, 1,
-                                      QTableWidgetItem(str(r[1])))
+                                        QTableWidgetItem(str(r[1])))
             self.schedule_table.setItem(i, 2,
-                                      QTableWidgetItem(str(r[2])))
+                                        QTableWidgetItem(str(r[2])))
             self.schedule_table.setItem(i, 3,
-                                      QTableWidgetItem(str(r[3])))
+                                        QTableWidgetItem(str(r[3])))
             self.schedule_table.setItem(len(records), 0, QTableWidgetItem(str('')))
             self.schedule_table.setItem(len(records), 1, QTableWidgetItem(str('')))
             self.schedule_table.setItem(len(records), 2, QTableWidgetItem(str('')))
             self.schedule_table.setItem(len(records), 3, QTableWidgetItem(str('')))
 
             self.schedule_table.setCellWidget(i, 4, selectRow)
-#            self.schedule_table.setCellWidget(i, 4, updateButton)
-
-#            updateButton.clicked.connect(lambda ch, num=i: self._update_lesson(num))
+            selectRow.clicked.connect(lambda ch, num=i, id=r[4]: self.select_row(num, id))
+        selectRow = QPushButton("Select")
+        self.schedule_table.setCellWidget(len(records), 4, selectRow)
+        selectRow.clicked.connect(lambda ch, num=len(records): self.select_row(num))
 
         self.schedule_table.resizeRowsToContents()
 
 
+
+    def select_row(self, numRow, *numId):
+        self.rowSelected = numRow
+        if numId:
+            self.idSelected = numId[0]
+            print (self.idSelected)
+        print (self.rowSelected)
+
     def update_lesson(self, query):
         if query == 'Alter':
             print('alter')
-#            text, alter = QInputDialog.getText(self, 'Alter Room Number', 'Enter New Room:')
-#            if alter:
-#                try:
-#                    self.cursor.execute("UPDATE {} SET room_numb = %s WHERE day = {}, start_time = {}".format(this_week, self.day, self.schedule_table.item(0, 2).text()), (text),)
-#                    self.conn.commit()
-#                except:
-#                    self.conn.commit()
-#                    QMessageBox.about(self, "Error", "Enter all fields")
+            self.cursor.execute("select count(day) from {} where day = %s".format(this_week), (self.day,))
+            records = self.cursor.fetchall()
+            print (self.rowSelected)
+            try:
+                if records[0][0] == self.rowSelected:
+                    raise Exception
+                elif records[0][0] > self.rowSelected:
+                    new_values = []
+                    self.cursor.execute("SELECT column_name FROM information_schema.columns "
+                                        "WHERE table_schema = 'public' AND table_name = '{}' ".format(this_week))
+                    columns = self.cursor.fetchall()
+                    for temp in columns[2:]:
+                        text, ok = QInputDialog.getText(self, 'Alter in timetable', 'Enter {} value:'.format(temp[0]))
+                        if ok and text != "":
+                            new_values.append(text)
+                    if len(new_values) == 4:
+                        try:
+                            print(new_values)
+                            self.cursor.execute("update {} set subject = %s, room_numb= %s, start_time = %s, finish_time = %s where id= {}".format(this_week, self.idSelected), tuple(new_values))
+                            self.conn.commit()
+                        except:
+                            self.conn.commit()
+                            QMessageBox.about(self, "Error", "Given subject value "
+                                                         "does not exist in subject table")
+
+            except:
+                self.conn.commit()
+                QMessageBox.about(self, "Error", "Select a non empty row first")
+
         elif query == 'Delete':
-            print('delete')
-#            row = list()
-#            for i in range(self.schedule_table.columnCount()):
-#                try:
-#                    self.cursor.execute("UPDATE {} SET subject = {}, room_numb = {} WHERE day = {}, start_time = {};".format(this_week, self.schedule_table.item(rowNum, 0).text(), self.schedule_table.item(rowNum, 1).text(), self.day, self.schedule_table.item(rowNum, 2)), (row[0],))
-#                    self.conn.commit()
-#                except:
-#                    QMessageBox.about(self, "Error", "Enter all fields")
+            self.cursor.execute("select count(day) from {} where day = %s".format(this_week), (self.day,))
+            records = self.cursor.fetchall()
+            print (self.rowSelected)
+            try:
+                if records[0][0] == self.rowSelected:
+                    raise Exception
+                elif records[0][0] > self.rowSelected:
+                    self.cursor.execute("delete from {} where id={}".format(this_week, self.idSelected))
+                    self.conn.commit()
+            except:
+                self.conn.commit()
+                QMessageBox.about(self, "Error", "Select a non empty row first")
+
         elif query == 'Add Row':
-            print(self.schedule_table.item(0, 3).text())
+            self.cursor.execute("select count(day) from {} where day = %s".format(this_week), (self.day,))
+            records = self.cursor.fetchall()
+            if records[0][0] == self.rowSelected:
+                print('Can do')
+                self.cursor.execute("SELECT column_name FROM information_schema.columns "
+                                    "WHERE table_schema = 'public' AND table_name = '{}' ".format(this_week))
+                columns = self.cursor.fetchall()
+                new_values = [self.day]
+                for temp in columns[2:]:
+                    text, ok = QInputDialog.getText(self, 'Add in timetable', 'Enter {} value:'.format(temp[0]))
+                    if ok and text != "":
+                        new_values.append(text)
+                if len(new_values) == 5:
+                    try:
+                        self.cursor.execute("insert into "
+                                            "{}(day, subject, room_numb, start_time, finish_time) "
+                                            "values (%s, %s, %s, %s, %s);".format(this_week), tuple(new_values))
+                        self.conn.commit()
+                    except:
+                        self.conn.commit()
+                        QMessageBox.about(self, "Error", "Given subject value "
+                                                         "does not exist in subject table")
 
-#    def _update_lesson(self, rowNum):
-#        row = list()
-#        for i in range(4):
-#            try:
-#                row.append(self.schedule_table.item(rowNum, i).text())
-#            except:
-#                row.append(None)
-#
-#            try:
-#                self.cursor.execute("UPDATE {} SET subject = {}, room_numb = {} WHERE day = {}, start_time = {};".format(this_week, self.schedule_table.item(rowNum, 0).text(), self.schedule_table.item(rowNum, 1).text(), self.day, self.schedule_table.item(rowNum, 2)), (row[0],))
-#                self.conn.commit()
-#            except:
-#                QMessageBox.about(self, "Error", "Enter all fields")
+                print(new_values)
 
-
+            else:
+                QMessageBox.about(self, "Error", "Select an empty row first")
 
     def _update_schedule(self):
+        self.rowSelected = None
+        self.idSelected = None
         self._update_schedule_table()
+
 
 
 app = QApplication(sys.argv)
